@@ -38,14 +38,40 @@ namespace pennyhack
         private const string customVisionProjectId = "c7ce015a-38af-4d9f-97db-316a038943fb";
         private const string customVisionPublishedModelName = "Iteration4";
         private const int numberOfCharsInOperationId = 36;
+        private const string inputImageName = "IMG_5399_edited-11.JPG";
         
-
         //TO DO: Change this variable to be an input to the function
         // private const string localImagePath = @"C:\Users\rahgupt\Desktop\penny\test\IMG_5399_edited-1-copy.jpg";
 
         [FunctionName("ExtractDate")]
         public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)]HttpRequest req, TraceWriter log, ExecutionContext executionContext)
         {
+
+            //string dirPath = Directory.GetCurrentDirectory();
+            string dirPath = executionContext.FunctionAppDirectory;
+            //string localImagePath = Path.Combine(executionContext.FunctionAppDirectory, "IMG_5399_edited-1.JPG");
+
+            
+
+            //string name = req.Query["name"];
+            // Reset the image stream position
+            req.Body.Position = 0;
+            //string requestBody = new StreamReader(req.Body).ReadToEnd();
+
+            Image<Rgba32> inputImage = SixLabors.ImageSharp.Image.Load(req.Body);
+            inputImage.Save(Path.Combine(dirPath, inputImageName), new JpegEncoder { Quality = 100 });
+
+            string localImagePath = Path.Combine(executionContext.FunctionAppDirectory, inputImageName);
+            log.Info(localImagePath);
+
+            //MultipartFormDataContent inputImage = new MultipartFormDataContent();
+            // inputImage.Add(new StreamContent(req.Body), "image/jpeg", inputImageName);
+
+            //dynamic data = JsonConvert.DeserializeObject(requestBody);
+            //name = name ?? data?.name;
+
+            //log.Info(inputImage.GetType().ToString());
+
             log.Info("C# HTTP trigger function processed a request.");
 
             log.Info(executionContext.FunctionDirectory);
@@ -67,15 +93,10 @@ namespace pennyhack
 
             log.Info("Images being analyzed ...");
 
-            //string dirPath = Directory.GetCurrentDirectory();
-            string dirPath = executionContext.FunctionAppDirectory;
-
-            string localImagePath = Path.Combine(executionContext.FunctionAppDirectory, "IMG_5399_edited-1.JPG");
-
-            log.Info(localImagePath);
 
             //localImagePath = req.Body;
             //TO DO: Change this method to accept Stream instead of string for image and add a return JSON output
+//            List<string> resultList = await PredictCustomImage(customVisionClient, localImagePath, customVisionProjectId, customVisionPublishedModelName, computerVision, log, dirPath);
             List<string> resultList = await PredictCustomImage(customVisionClient, localImagePath, customVisionProjectId, customVisionPublishedModelName, computerVision, log, dirPath);
 
             foreach (string i in resultList)
@@ -83,18 +104,11 @@ namespace pennyhack
                 log.Info("PRINTING FINAL OUTPUT" + i);
             }
 
-            //TO DO: Change below sample functions code to return JSON output from  PredictCustomerImage
-            string name = req.Query["name"];
-
-            string requestBody = new StreamReader(req.Body).ReadToEnd();
-            dynamic data = JsonConvert.DeserializeObject(requestBody);
-            name = name ?? data?.name;
-
             //return name != null
             //    ? (ActionResult)new OkObjectResult($"Hello, {name}")
             //    : new BadRequestObjectResult("Please pass a name on the query string or in the request body");
 
-            return name == null
+            return req.ContentLength == 0
                 ? new HttpResponseMessage(HttpStatusCode.BadRequest)
                 {
                     Content = new StringContent("Please pass a name in the query or in the request body")
@@ -245,18 +259,6 @@ namespace pennyhack
             //}
 
             return WriteListToJson(recResults, log);
-        }
-
-        private static String WriteToJson(TextRecognitionResult textRecognitionResult, TraceWriter log)
-        {
-            var stream1 = new MemoryStream();
-            var ser = new DataContractJsonSerializer(typeof(TextRecognitionResult));
-            ser.WriteObject(stream1, textRecognitionResult);
-
-            stream1.Position = 0;
-            var sr = new StreamReader(stream1);
-
-            return sr.ReadToEnd();
         }
 
         private static String WriteListToJson(System.Collections.Generic.IList<TextRecognitionResult> recognitionResults, TraceWriter log)
